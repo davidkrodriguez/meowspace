@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createPet } from "./api/pets";
-import { createPost, AuthorizationError } from "./api/posts";
-import { followPet } from "./api/follows";
+import { createPet, listMyPets, ValidationError as PetValidationError } from "./api/pets";
+import { createPost, AuthorizationError, ValidationError as PostValidationError } from "./api/posts";
+import { followPet, ValidationError as FollowValidationError } from "./api/follows";
 import { getFeed } from "./api/feed";
 import { getHydrationSuggestions } from "./onboarding";
+import { AuthError } from "./auth";
 import { getStore, resetStore } from "./store";
 
 describe("slice 1 core loop", () => {
@@ -93,5 +94,55 @@ describe("slice 1 core loop", () => {
     expect(names).toContain("Nori");
     expect(names).toContain("Pico");
     expect(getStore().pets).toHaveLength(2);
+  });
+
+  it("validates required fields and auth context", () => {
+    resetStore();
+    expect(() =>
+      createPet({ clerkUserId: "owner_1" }, { name: "", species: "cat" }),
+    ).toThrow(PetValidationError);
+    expect(() =>
+      createPet({ clerkUserId: "owner_1" }, { name: "Mochi", species: "" }),
+    ).toThrow(PetValidationError);
+    expect(() => createPet({}, { name: "Mochi", species: "cat" })).toThrow(
+      AuthError,
+    );
+  });
+
+  it("returns only the authenticated owner's pets", () => {
+    resetStore();
+    createPet({ clerkUserId: "owner_1" }, { name: "Nori", species: "cat" });
+    createPet({ clerkUserId: "owner_1" }, { name: "Miso", species: "cat" });
+    createPet({ clerkUserId: "owner_2" }, { name: "Pico", species: "dog" });
+
+    const ownerPets = listMyPets({ clerkUserId: "owner_1" });
+    expect(ownerPets).toHaveLength(2);
+    expect(ownerPets.map((pet) => pet.name)).toEqual(["Nori", "Miso"]);
+  });
+
+  it("validates post creation and follow idempotency", () => {
+    resetStore();
+    const pet = createPet({ clerkUserId: "owner_1" }, { name: "Nori", species: "cat" });
+
+    expect(() =>
+      createPost(
+        { clerkUserId: "owner_1" },
+        { petId: "pet_missing", mediaType: "image", mediaUrl: "https://example.com/a.jpg" },
+      ),
+    ).toThrow(PostValidationError);
+    expect(() =>
+      createPost(
+        { clerkUserId: "owner_1" },
+        { petId: pet.id, mediaType: "image", mediaUrl: "" },
+      ),
+    ).toThrow(PostValidationError);
+
+    expect(() => followPet({ clerkUserId: "viewer_1" }, "pet_missing")).toThrow(
+      FollowValidationError,
+    );
+    const first = followPet({ clerkUserId: "viewer_1" }, pet.id);
+    const second = followPet({ clerkUserId: "viewer_1" }, pet.id);
+    expect(second.id).toBe(first.id);
+    expect(getStore().follows).toHaveLength(1);
   });
 });
