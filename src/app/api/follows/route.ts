@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const targetPetId = String(body.targetPetId ?? "");
+    const targetPetId = String(body.petId ?? body.targetPetId ?? "");
     const follow = await followPet(authFromRequest(request), targetPetId);
     return NextResponse.json({ follow }, { status: 200 });
   } catch (e) {

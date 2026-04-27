@@ -5,3 +5,5 @@
 - [ ] Add API contract docs with standardized error envelope and request IDs.
 - [ ] Add `.env.example` covering required runtime variables.
 - [ ] Add smoke/performance checks for feed target latency.
+- [x] `/qa` 2026-04-26: fixed follow payload compatibility (`petId` accepted by `POST /api/follows`) and re-verified follow/unfollow API flow.
+- [ ] Investigate local dev watcher instability (`EMFILE` + hot-reload module-not-found loops) to keep `npm run dev` reliable during QA.

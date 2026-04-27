@@ -28,48 +28,58 @@ interface StoreData {
   follows: Follow[];
 }
 
-const store: StoreData = {
-  users: [],
-  pets: [],
-  posts: [],
-  follows: [],
-};
+declare global {
+  // eslint-disable-next-line no-var
+  var __MEOWSPACE_IN_MEMORY_STORE__: StoreData | undefined;
+}
+
+function getInMemoryStore(): StoreData {
+  if (!globalThis.__MEOWSPACE_IN_MEMORY_STORE__) {
+    globalThis.__MEOWSPACE_IN_MEMORY_STORE__ = {
+      users: [],
+      pets: [],
+      posts: [],
+      follows: [],
+    };
+  }
+  return globalThis.__MEOWSPACE_IN_MEMORY_STORE__;
+}
 
 class InMemoryAdapter implements PersistenceAdapter {
   async findUserByClerkId(clerkId: string): Promise<User | undefined> {
-    return store.users.find((user) => user.clerkId === clerkId);
+    return getInMemoryStore().users.find((user) => user.clerkId === clerkId);
   }
 
   async insertUser(user: User): Promise<void> {
-    store.users.push(user);
+    getInMemoryStore().users.push(user);
   }
 
   async listPets(): Promise<Pet[]> {
-    return store.pets.slice();
+    return getInMemoryStore().pets.slice();
   }
 
   async listPetsByOwner(ownerUserId: string): Promise<Pet[]> {
-    return store.pets.filter((pet) => pet.ownerUserId === ownerUserId);
+    return getInMemoryStore().pets.filter((pet) => pet.ownerUserId === ownerUserId);
   }
 
   async findPetById(petId: string): Promise<Pet | undefined> {
-    return store.pets.find((pet) => pet.id === petId);
+    return getInMemoryStore().pets.find((pet) => pet.id === petId);
   }
 
   async insertPet(pet: Pet): Promise<void> {
-    store.pets.push(pet);
+    getInMemoryStore().pets.push(pet);
   }
 
   async listPosts(): Promise<Post[]> {
-    return store.posts.slice();
+    return getInMemoryStore().posts.slice();
   }
 
   async insertPost(post: Post): Promise<void> {
-    store.posts.push(post);
+    getInMemoryStore().posts.push(post);
   }
 
   async listFollowsByFollower(followerUserId: string): Promise<Follow[]> {
-    return store.follows.filter(
+    return getInMemoryStore().follows.filter(
       (follow) => follow.followerUserId === followerUserId,
     );
   }
@@ -78,7 +88,7 @@ class InMemoryAdapter implements PersistenceAdapter {
     followerUserId: string,
     targetPetId: string,
   ): Promise<Follow | undefined> {
-    return store.follows.find(
+    return getInMemoryStore().follows.find(
       (follow) =>
         follow.followerUserId === followerUserId &&
         follow.targetPetId === targetPetId,
@@ -86,14 +96,15 @@ class InMemoryAdapter implements PersistenceAdapter {
   }
 
   async insertFollow(follow: Follow): Promise<void> {
-    store.follows.push(follow);
+    getInMemoryStore().follows.push(follow);
   }
 
   async deleteFollowByPair(
     followerUserId: string,
     targetPetId: string,
   ): Promise<boolean> {
-    const index = store.follows.findIndex(
+    const inMemoryStore = getInMemoryStore();
+    const index = inMemoryStore.follows.findIndex(
       (follow) =>
         follow.followerUserId === followerUserId &&
         follow.targetPetId === targetPetId,
@@ -101,7 +112,7 @@ class InMemoryAdapter implements PersistenceAdapter {
     if (index === -1) {
       return false;
     }
-    store.follows.splice(index, 1);
+    inMemoryStore.follows.splice(index, 1);
     return true;
   }
 }
@@ -128,10 +139,11 @@ export async function getStore(): Promise<PersistenceAdapter> {
 }
 
 export function resetStore(): void {
-  store.users = [];
-  store.pets = [];
-  store.posts = [];
-  store.follows = [];
+  const inMemoryStore = getInMemoryStore();
+  inMemoryStore.users = [];
+  inMemoryStore.pets = [];
+  inMemoryStore.posts = [];
+  inMemoryStore.follows = [];
   cachedAdapter = undefined;
 }
 
