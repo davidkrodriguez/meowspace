@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APP_NAME } from "./app";
+import { APP_NAME } from "./constants";
 
 describe("APP_NAME", () => {
   it("exports the expected app name", () => {

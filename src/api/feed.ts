@@ -26,21 +26,21 @@ function isAfterCursor(post: Post, cursor: Cursor): boolean {
   return post.id < cursor.id;
 }
 
-export function getFeed(
+export async function getFeed(
   context: AuthContext,
   query: FeedQuery = {},
-): FeedPage {
-  const user = resolveAuthenticatedUser(context);
-  const store = getStore();
+): Promise<FeedPage> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const follows = await store.listFollowsByFollower(user.id);
   const followPetIds = new Set(
-    store.follows
-      .filter((follow) => follow.followerUserId === user.id)
-      .map((follow) => follow.targetPetId),
+    follows.map((follow) => follow.targetPetId),
   );
+  const posts = await store.listPosts();
 
   const maxLimit = 50;
   const limit = Math.min(Math.max(query.limit ?? 20, 1), maxLimit);
-  let candidates = store.posts
+  let candidates = posts
     .filter((post) => followPetIds.has(post.petId))
     .sort(comparePosts);
 

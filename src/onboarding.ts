@@ -6,9 +6,11 @@ export interface HydrationResult {
   suggestedPets: Pet[];
 }
 
-export function getHydrationSuggestions(limit = 5): HydrationResult {
-  const pets = getStore()
-    .pets
+export async function getHydrationSuggestions(
+  limit = 5,
+): Promise<HydrationResult> {
+  const store = await getStore();
+  const pets = (await store.listPets())
     .slice()
     .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
     .slice(0, Math.max(limit, 0));

@@ -8,17 +8,28 @@ export interface AuthContext {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
 }
 
-export function resolveAuthenticatedUser(context: AuthContext): User {
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
+
+export async function resolveAuthenticatedUser(
+  context: AuthContext,
+): Promise<User> {
   const { clerkUserId } = context;
   if (!clerkUserId) {
     throw new AuthError("Missing clerk user id");
   }
 
-  const store = getStore();
-  const existing = store.users.find((user) => user.clerkId === clerkUserId);
+  const store = await getStore();
+  const existing = await store.findUserByClerkId(clerkUserId);
   if (existing) {
     return existing;
   }
@@ -28,6 +39,16 @@ export function resolveAuthenticatedUser(context: AuthContext): User {
     clerkId: clerkUserId,
     createdAt: nowIso(),
   };
-  store.users.push(created);
-  return created;
+  try {
+    await store.insertUser(created);
+    return created;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const raced = await store.findUserByClerkId(clerkUserId);
+      if (raced) {
+        return raced;
+      }
+    }
+    throw error;
+  }
 }
