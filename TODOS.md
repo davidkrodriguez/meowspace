@@ -1,9 +1,9 @@
 - [x] Slice 2: Next.js App Router + JSON API (`/api/pets`, `/api/posts`, `/api/follows`, `/api/feed`, `/api/onboarding/hydration`) with `x-clerk-user-id` header.
 - [x] Slice 3 (start): persistence abstraction + PostgreSQL adapter + initial SQL migration.
-- [ ] Implement remaining plan endpoints: pet update/delete (completed: `GET /api/pets/:id`, unfollow).
-- [ ] Add media upload integration flow (Cloudinary/S3 signed upload path).
-- [ ] Add API contract docs with standardized error envelope and request IDs.
-- [ ] Add `.env.example` covering required runtime variables.
-- [ ] Add smoke/performance checks for feed target latency.
+- [x] Implement remaining plan endpoints: pet update/delete (completed: `GET /api/pets/:id`, unfollow).
+- [x] Add media upload integration flow (Cloudinary/S3 signed upload path) for local MVP tickets/assets.
+- [x] Add API contract docs with standardized error envelope and request IDs.
+- [x] Add `.env.example` covering required runtime variables.
+- [x] Add smoke/performance checks for feed target latency (`npm run perf:feed-smoke`).
 - [x] `/qa` 2026-04-26: fixed follow payload compatibility (`petId` accepted by `POST /api/follows`) and re-verified follow/unfollow API flow.
-- [ ] Investigate local dev watcher instability (`EMFILE` + hot-reload module-not-found loops) to keep `npm run dev` reliable during QA.
+- [x] Investigate local dev watcher instability (`EMFILE` + hot-reload module-not-found loops) to keep `npm run dev` reliable during QA (`npm run dev:stable` + ulimit guidance).

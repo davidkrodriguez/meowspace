@@ -5,9 +5,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:stable": "ulimit -n 65536 && next dev",
     "build": "next build",
     "start": "next start",
     "db:migrate": "node scripts/migrate.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:prepare": "npm run db:up && npm run db:migrate",
+    "perf:feed-smoke": "node scripts/feed-smoke.js",
     "test": "vitest run"
   },
   "keywords": [],
