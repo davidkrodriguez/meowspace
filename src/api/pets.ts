@@ -3,6 +3,7 @@ import { getStore, nowIso } from "../store";
 import type { Pet } from "../types";
 
 export class ValidationError extends Error {}
+export class NotFoundError extends Error {}
 
 function randomId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -46,4 +47,17 @@ export async function listMyPets(context: AuthContext): Promise<Pet[]> {
   const user = await resolveAuthenticatedUser(context);
   const store = await getStore();
   return store.listPetsByOwner(user.id);
+}
+
+export async function getPetById(
+  context: AuthContext,
+  petId: string,
+): Promise<Pet> {
+  await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const pet = await store.findPetById(petId);
+  if (!pet) {
+    throw new NotFoundError("Pet not found");
+  }
+  return pet;
 }

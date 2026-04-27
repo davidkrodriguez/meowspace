@@ -2,7 +2,9 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { resetStore } from "./store";
 import { GET as getFeed } from "./app/api/feed/route";
 import { POST as postFollows } from "./app/api/follows/route";
+import { DELETE as deleteFollowByPetId } from "./app/api/follows/[petId]/route";
 import { GET as getPets, POST as postPets } from "./app/api/pets/route";
+import { GET as getPetById } from "./app/api/pets/[petId]/route";
 import { POST as postPosts } from "./app/api/posts/route";
 import { GET as getHydration } from "./app/api/onboarding/hydration/route";
 
@@ -91,5 +93,69 @@ describe("slice 2 HTTP API", () => {
       ),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("GET /api/pets/:id returns pet and 404 for missing pet", async () => {
+    const petRes = await postPets(
+      new Request("http://localhost/api/pets", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_2") },
+        body: JSON.stringify({ name: "Milo", species: "cat" }),
+      }),
+    );
+    const { pet } = (await petRes.json()) as { pet: { id: string } };
+
+    const ok = await getPetById(
+      new Request(`http://localhost/api/pets/${pet.id}`, {
+        headers: auth("viewer_2"),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(ok.status).toBe(200);
+
+    const missing = await getPetById(
+      new Request("http://localhost/api/pets/pet_missing", {
+        headers: auth("viewer_2"),
+      }),
+      { params: { petId: "pet_missing" } },
+    );
+    expect(missing.status).toBe(404);
+  });
+
+  it("DELETE /api/follows/:petId unfollows existing follow", async () => {
+    const petRes = await postPets(
+      new Request("http://localhost/api/pets", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_3") },
+        body: JSON.stringify({ name: "Nori", species: "cat" }),
+      }),
+    );
+    const { pet } = (await petRes.json()) as { pet: { id: string } };
+
+    await postFollows(
+      new Request("http://localhost/api/follows", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("viewer_3") },
+        body: JSON.stringify({ targetPetId: pet.id }),
+      }),
+    );
+
+    const deleted = await deleteFollowByPetId(
+      new Request(`http://localhost/api/follows/${pet.id}`, {
+        method: "DELETE",
+        headers: auth("viewer_3"),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(deleted.status).toBe(200);
+
+    const deletedAgain = await deleteFollowByPetId(
+      new Request(`http://localhost/api/follows/${pet.id}`, {
+        method: "DELETE",
+        headers: auth("viewer_3"),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(deletedAgain.status).toBe(404);
   });
 });

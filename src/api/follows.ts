@@ -7,6 +7,7 @@ function randomId(prefix: string): string {
 }
 
 export class ValidationError extends Error {}
+export class NotFoundError extends Error {}
 
 export async function followPet(
   context: AuthContext,
@@ -33,4 +34,18 @@ export async function followPet(
   };
   await store.insertFollow(created);
   return created;
+}
+
+export async function unfollowPet(
+  context: AuthContext,
+  targetPetId: string,
+): Promise<Follow> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const existing = await store.findFollowByPair(user.id, targetPetId);
+  if (!existing) {
+    throw new NotFoundError("Follow not found");
+  }
+  await store.deleteFollowByPair(user.id, targetPetId);
+  return existing;
 }

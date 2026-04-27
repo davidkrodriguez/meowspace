@@ -1,6 +1,6 @@
 - [x] Slice 2: Next.js App Router + JSON API (`/api/pets`, `/api/posts`, `/api/follows`, `/api/feed`, `/api/onboarding/hydration`) with `x-clerk-user-id` header.
 - [x] Slice 3 (start): persistence abstraction + PostgreSQL adapter + initial SQL migration.
-- [ ] Implement remaining plan endpoints: `GET /api/pets/:id`, pet update/delete, and unfollow.
+- [ ] Implement remaining plan endpoints: pet update/delete (completed: `GET /api/pets/:id`, unfollow).
 - [ ] Add media upload integration flow (Cloudinary/S3 signed upload path).
 - [ ] Add API contract docs with standardized error envelope and request IDs.
 - [ ] Add `.env.example` covering required runtime variables.

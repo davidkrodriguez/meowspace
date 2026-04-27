@@ -15,6 +15,10 @@ export interface PersistenceAdapter {
     targetPetId: string,
   ): Promise<Follow | undefined>;
   insertFollow(follow: Follow): Promise<void>;
+  deleteFollowByPair(
+    followerUserId: string,
+    targetPetId: string,
+  ): Promise<boolean>;
 }
 
 interface StoreData {
@@ -83,6 +87,22 @@ class InMemoryAdapter implements PersistenceAdapter {
 
   async insertFollow(follow: Follow): Promise<void> {
     store.follows.push(follow);
+  }
+
+  async deleteFollowByPair(
+    followerUserId: string,
+    targetPetId: string,
+  ): Promise<boolean> {
+    const index = store.follows.findIndex(
+      (follow) =>
+        follow.followerUserId === followerUserId &&
+        follow.targetPetId === targetPetId,
+    );
+    if (index === -1) {
+      return false;
+    }
+    store.follows.splice(index, 1);
+    return true;
   }
 }
 

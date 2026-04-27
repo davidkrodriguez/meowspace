@@ -133,6 +133,17 @@ class PostgresAdapter implements PersistenceAdapter {
       [follow.id, follow.followerUserId, follow.targetPetId, follow.createdAt],
     );
   }
+
+  async deleteFollowByPair(
+    followerUserId: string,
+    targetPetId: string,
+  ): Promise<boolean> {
+    const result = await this.pool.query(
+      "DELETE FROM follows WHERE follower_user_id = $1 AND target_pet_id = $2",
+      [followerUserId, targetPetId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
 }
 
 export function createPostgresAdapter(databaseUrl: string): PersistenceAdapter {
