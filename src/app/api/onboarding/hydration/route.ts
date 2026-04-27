@@ -12,6 +12,6 @@ export async function GET(request: Request) {
       : undefined;
   const limit =
     parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined;
-  const result = getHydrationSuggestions(limit);
+  const result = await getHydrationSuggestions(limit);
   return NextResponse.json(result);
 }

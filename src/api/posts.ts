@@ -16,26 +16,26 @@ export interface CreatePostInput {
   caption?: string;
 }
 
-export function createPost(
+export async function createPost(
   context: AuthContext,
   input: CreatePostInput,
-): Post {
-  const user = resolveAuthenticatedUser(context);
-  const store = getStore();
-  const pet = store.pets.find((entry) => entry.id === input.petId);
+): Promise<Post> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const pet = await store.findPetById(input.petId);
 
-  if (!pet) {
-    throw new ValidationError("Pet not found");
-  }
-  if (pet.ownerUserId !== user.id) {
-    throw new AuthorizationError("PET_NOT_OWNED");
-  }
-  if (!input.mediaUrl?.trim()) {
-    throw new ValidationError("Media URL is required");
-  }
-  if (!["image", "video"].includes(input.mediaType)) {
-    throw new ValidationError("Invalid media type");
-  }
+    if (!pet) {
+      throw new ValidationError("Pet not found");
+    }
+    if (pet.ownerUserId !== user.id) {
+      throw new AuthorizationError("PET_NOT_OWNED");
+    }
+    if (!input.mediaUrl?.trim()) {
+      throw new ValidationError("Media URL is required");
+    }
+    if (!["image", "video"].includes(input.mediaType)) {
+      throw new ValidationError("Invalid media type");
+    }
 
   const created: Post = {
     id: randomId("pst"),
@@ -45,6 +45,6 @@ export function createPost(
     caption: input.caption?.trim() ?? "",
     createdAt: nowIso(),
   };
-  store.posts.push(created);
+  await store.insertPost(created);
   return created;
 }

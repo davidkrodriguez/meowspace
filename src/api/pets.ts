@@ -15,10 +15,10 @@ export interface CreatePetInput {
   bio?: string;
 }
 
-export function createPet(
+export async function createPet(
   context: AuthContext,
   input: CreatePetInput,
-): Pet {
+): Promise<Pet> {
   if (!input.name?.trim()) {
     throw new ValidationError("Pet name is required");
   }
@@ -26,7 +26,7 @@ export function createPet(
     throw new ValidationError("Pet species is required");
   }
 
-  const user = resolveAuthenticatedUser(context);
+  const user = await resolveAuthenticatedUser(context);
   const created: Pet = {
     id: randomId("pet"),
     ownerUserId: user.id,
@@ -37,11 +37,13 @@ export function createPet(
     createdAt: nowIso(),
   };
 
-  getStore().pets.push(created);
+  const store = await getStore();
+  await store.insertPet(created);
   return created;
 }
 
-export function listMyPets(context: AuthContext): Pet[] {
-  const user = resolveAuthenticatedUser(context);
-  return getStore().pets.filter((pet) => pet.ownerUserId === user.id);
+export async function listMyPets(context: AuthContext): Promise<Pet[]> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  return store.listPetsByOwner(user.id);
 }
