@@ -1,3 +1,4 @@
+import React from "react";
 import { APP_NAME } from "../constants";
 
 export default function HomePage() {
