@@ -24,6 +24,13 @@ type FeedResponse = {
   nextCursor?: { createdAt: string; id: string };
 };
 
+type UploadTicket = {
+  assetId: string;
+  uploadUrl: string;
+  publicUrl: string;
+  expiresAt: string;
+};
+
 function headersFor(userId: string): HeadersInit {
   return {
     "content-type": "application/json",
@@ -49,6 +56,7 @@ export default function Slice4Client() {
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const [mediaUrl, setMediaUrl] = useState("");
   const [caption, setCaption] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [followPetId, setFollowPetId] = useState("");
   const [petToEdit, setPetToEdit] = useState("");
@@ -158,6 +166,67 @@ export default function Slice4Client() {
       setStatus(`Post published for pet ${body.post.petId}.`, "success");
       setMediaUrl("");
       setCaption("");
+      setSelectedFile(null);
+    } catch (error) {
+      setStatus((error as Error).message, "error");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function onUploadFile() {
+    if (!ownerTrimmed) {
+      setStatus("Enter a user id first.", "error");
+      return;
+    }
+    if (!selectedFile) {
+      setStatus("Choose a file to upload first.", "error");
+      return;
+    }
+
+    setBusyAction("upload-file");
+    try {
+      const ticketRes = await fetch("/api/media/upload-url", {
+        method: "POST",
+        headers: headersFor(ownerTrimmed),
+        body: JSON.stringify({
+          filename: selectedFile.name,
+          contentType: selectedFile.type || "application/octet-stream",
+        }),
+      });
+      const ticketBody = (await ticketRes.json()) as {
+        ticket?: UploadTicket;
+        error?: { message: string };
+      };
+      if (!ticketRes.ok || !ticketBody.ticket) {
+        throw new Error(ticketBody?.error?.message ?? "Failed to create upload ticket");
+      }
+
+      const uploadRes = await fetch(ticketBody.ticket.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "content-type": selectedFile.type || "application/octet-stream",
+        },
+        body: selectedFile,
+      });
+      if (!uploadRes.ok) {
+        let uploadMessage = "Upload failed";
+        try {
+          const errorBody = (await uploadRes.json()) as { error?: { message?: string } };
+          uploadMessage = errorBody?.error?.message ?? uploadMessage;
+        } catch {
+          // ignore JSON parse fallback
+        }
+        throw new Error(uploadMessage);
+      }
+
+      setMediaUrl(ticketBody.ticket.publicUrl);
+      if (selectedFile.type.startsWith("video/")) {
+        setMediaType("video");
+      } else {
+        setMediaType("image");
+      }
+      setStatus(`Uploaded ${selectedFile.name}.`, "success");
     } catch (error) {
       setStatus((error as Error).message, "error");
     } finally {
@@ -449,8 +518,22 @@ export default function Slice4Client() {
           <option value="image">image</option>
           <option value="video">video</option>
         </select>
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            type="file"
+            accept="image/*,video/*"
+            onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+          />
+          <button
+            type="button"
+            onClick={() => void onUploadFile()}
+            disabled={busyAction !== "" || !selectedFile}
+          >
+            {busyAction === "upload-file" ? "Uploading..." : "Upload Selected File"}
+          </button>
+        </div>
         <input
-          placeholder="https://example.com/media.jpg"
+          placeholder="/api/media/assets/asset_xxxxxxxx"
           value={mediaUrl}
           onChange={(e) => setMediaUrl(e.target.value)}
           required

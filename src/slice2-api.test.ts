@@ -11,6 +11,11 @@ import {
 } from "./app/api/pets/[petId]/route";
 import { POST as postPosts } from "./app/api/posts/route";
 import { GET as getHydration } from "./app/api/onboarding/hydration/route";
+import { POST as postUploadUrl } from "./app/api/media/upload-url/route";
+import {
+  GET as getMediaAsset,
+  PUT as putMediaAsset,
+} from "./app/api/media/assets/[assetId]/route";
 
 const auth = (clerkUserId: string) => ({
   "x-clerk-user-id": clerkUserId,
@@ -209,5 +214,52 @@ describe("slice 2 HTTP API", () => {
       { params: { petId: pet.id } },
     );
     expect(missing.status).toBe(404);
+  });
+
+  it("creates upload ticket, accepts binary upload, and serves asset", async () => {
+    const ticketRes = await postUploadUrl(
+      new Request("http://localhost/api/media/upload-url", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_upload") },
+        body: JSON.stringify({ filename: "cat.jpg", contentType: "image/jpeg" }),
+      }),
+    );
+    expect(ticketRes.status).toBe(201);
+    const ticketBody = (await ticketRes.json()) as {
+      ticket: { assetId: string; uploadUrl: string; publicUrl: string };
+    };
+    const { assetId, uploadUrl } = ticketBody.ticket;
+    const token = new URL(`http://localhost${uploadUrl}`).searchParams.get("token");
+    expect(token).toBeTruthy();
+
+    const upload = await putMediaAsset(
+      new Request(`http://localhost/api/media/assets/${assetId}?token=${token}`, {
+        method: "PUT",
+        headers: { "content-type": "image/jpeg" },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }),
+      { params: { assetId } },
+    );
+    expect(upload.status).toBe(204);
+
+    const fetched = await getMediaAsset(
+      new Request(`http://localhost/api/media/assets/${assetId}`),
+      { params: { assetId } },
+    );
+    expect(fetched.status).toBe(200);
+    expect(fetched.headers.get("content-type")).toBe("image/jpeg");
+    const bytes = new Uint8Array(await fetched.arrayBuffer());
+    expect(Array.from(bytes)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("rejects upload tickets for unsupported content types", async () => {
+    const res = await postUploadUrl(
+      new Request("http://localhost/api/media/upload-url", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_upload") },
+        body: JSON.stringify({ filename: "bad.pdf", contentType: "application/pdf" }),
+      }),
+    );
+    expect(res.status).toBe(400);
   });
 });
