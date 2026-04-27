@@ -11,14 +11,16 @@ function randomId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function resolveAuthenticatedUser(context: AuthContext): User {
+export async function resolveAuthenticatedUser(
+  context: AuthContext,
+): Promise<User> {
   const { clerkUserId } = context;
   if (!clerkUserId) {
     throw new AuthError("Missing clerk user id");
   }
 
-  const store = getStore();
-  const existing = store.users.find((user) => user.clerkId === clerkUserId);
+  const store = await getStore();
+  const existing = await store.findUserByClerkId(clerkUserId);
   if (existing) {
     return existing;
   }
@@ -28,6 +30,6 @@ export function resolveAuthenticatedUser(context: AuthContext): User {
     clerkId: clerkUserId,
     createdAt: nowIso(),
   };
-  store.users.push(created);
+  await store.insertUser(created);
   return created;
 }

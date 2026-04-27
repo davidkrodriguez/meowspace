@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createPet, listMyPets } from "@/api/pets";
-
-export const dynamic = "force-dynamic";
 import { domainErrorResponse } from "@/lib/http-error";
 import { authFromRequest } from "@/lib/request-auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
-    const pets = listMyPets(authFromRequest(request));
+    const pets = await listMyPets(authFromRequest(request));
     return NextResponse.json({ pets });
   } catch (e) {
     return domainErrorResponse(e);
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const pet = createPet(authFromRequest(request), {
+    const pet = await createPet(authFromRequest(request), {
       name: String(body.name ?? ""),
       species: String(body.species ?? ""),
       avatarUrl:

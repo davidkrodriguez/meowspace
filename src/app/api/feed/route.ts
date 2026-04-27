@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getFeed } from "@/api/feed";
-
-export const dynamic = "force-dynamic";
-import type { Cursor } from "@/types";
 import { domainErrorResponse } from "@/lib/http-error";
 import { authFromRequest } from "@/lib/request-auth";
+import type { Cursor } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       parsedLimit !== undefined && Number.isFinite(parsedLimit)
         ? parsedLimit
         : undefined;
+
     let cursor: Cursor | undefined;
     const cursorRaw = searchParams.get("cursor");
     if (cursorRaw) {
@@ -35,10 +36,8 @@ export async function GET(request: Request) {
         );
       }
     }
-    const page = getFeed(authFromRequest(request), {
-      limit,
-      cursor,
-    });
+
+    const page = await getFeed(authFromRequest(request), { limit, cursor });
     return NextResponse.json(page);
   } catch (e) {
     return domainErrorResponse(e);

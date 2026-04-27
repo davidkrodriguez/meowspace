@@ -7,18 +7,22 @@ function randomId(prefix: string): string {
 }
 
 export class ValidationError extends Error {}
+export class NotFoundError extends Error {}
 
-export function followPet(context: AuthContext, targetPetId: string): Follow {
-  const user = resolveAuthenticatedUser(context);
-  const store = getStore();
-  const targetPet = store.pets.find((pet) => pet.id === targetPetId);
+export async function followPet(
+  context: AuthContext,
+  targetPetId: string,
+): Promise<Follow> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const targetPet = await store.findPetById(targetPetId);
   if (!targetPet) {
     throw new ValidationError("Target pet not found");
   }
 
-  const existing = store.follows.find(
-    (follow) =>
-      follow.followerUserId === user.id && follow.targetPetId === targetPetId,
+  const existing = await store.findFollowByPair(
+    user.id,
+    targetPetId,
   );
   if (existing) return existing;
 
@@ -28,6 +32,20 @@ export function followPet(context: AuthContext, targetPetId: string): Follow {
     targetPetId,
     createdAt: nowIso(),
   };
-  store.follows.push(created);
+  await store.insertFollow(created);
   return created;
+}
+
+export async function unfollowPet(
+  context: AuthContext,
+  targetPetId: string,
+): Promise<Follow> {
+  const user = await resolveAuthenticatedUser(context);
+  const store = await getStore();
+  const existing = await store.findFollowByPair(user.id, targetPetId);
+  if (!existing) {
+    throw new NotFoundError("Follow not found");
+  }
+  await store.deleteFollowByPair(user.id, targetPetId);
+  return existing;
 }

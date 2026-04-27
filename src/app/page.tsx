@@ -1,5 +1,6 @@
 import React from "react";
 import { APP_NAME } from "../constants";
+import Slice4Client from "./ui/slice4-client";
 
 export default function HomePage() {
   return (
@@ -9,6 +10,7 @@ export default function HomePage() {
         API routes live under <code>/api/*</code>. Send{" "}
         <code>x-clerk-user-id</code> on mutating requests.
       </p>
+      <Slice4Client />
     </main>
   );
 }

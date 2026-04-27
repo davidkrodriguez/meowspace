@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "../auth";
-import { ValidationError as PetsValidationError } from "../api/pets";
+import {
+  AuthorizationError as PetsAuthorizationError,
+  NotFoundError as PetNotFoundError,
+  ValidationError as PetsValidationError,
+} from "../api/pets";
 import {
   AuthorizationError,
   ValidationError as PostsValidationError,
 } from "../api/posts";
-import { ValidationError as FollowsValidationError } from "../api/follows";
+import {
+  NotFoundError as FollowNotFoundError,
+  ValidationError as FollowsValidationError,
+} from "../api/follows";
 
 export function domainErrorResponse(error: unknown): NextResponse {
   if (error instanceof AuthError) {
@@ -14,7 +21,7 @@ export function domainErrorResponse(error: unknown): NextResponse {
       { status: 401 },
     );
   }
-  if (error instanceof AuthorizationError) {
+  if (error instanceof AuthorizationError || error instanceof PetsAuthorizationError) {
     return NextResponse.json(
       { error: { code: error.message, message: "Forbidden" } },
       { status: 403 },
@@ -28,6 +35,12 @@ export function domainErrorResponse(error: unknown): NextResponse {
     return NextResponse.json(
       { error: { code: "VALIDATION_ERROR", message: error.message } },
       { status: 400 },
+    );
+  }
+  if (error instanceof PetNotFoundError || error instanceof FollowNotFoundError) {
+    return NextResponse.json(
+      { error: { code: "NOT_FOUND", message: error.message } },
+      { status: 404 },
     );
   }
   console.error(error);
