@@ -30,6 +30,15 @@ function percentile(values, p) {
   return sorted[Math.max(0, index)];
 }
 
+function computeSummary(samples, threshold) {
+  const mean =
+    samples.reduce((sum, sample) => sum + sample, 0) / samples.length;
+  const p50 = percentile(samples, 50);
+  const p95 = percentile(samples, 95);
+  const passes = p95 <= threshold;
+  return { mean, p50, p95, passes };
+}
+
 async function run() {
   if (!Number.isFinite(runs) || runs <= 0) {
     throw new Error("FEED_SMOKE_RUNS must be a positive integer");
@@ -47,23 +56,27 @@ async function run() {
     console.log(`run ${i + 1}/${runs}: ${elapsedMs.toFixed(1)} ms`);
   }
 
-  const mean =
-    samples.reduce((sum, sample) => sum + sample, 0) / samples.length;
-  const p50 = percentile(samples, 50);
-  const p95 = percentile(samples, 95);
+  const { mean, p50, p95, passes } = computeSummary(samples, thresholdMs);
 
   console.log(
     `feed latency summary -> avg=${mean.toFixed(1)}ms p50=${p50.toFixed(1)}ms p95=${p95.toFixed(1)}ms threshold=${thresholdMs}ms`,
   );
 
-  if (p95 > thresholdMs) {
+  if (!passes) {
     throw new Error(
       `Feed p95 ${p95.toFixed(1)}ms exceeded threshold ${thresholdMs}ms`,
     );
   }
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+module.exports = {
+  percentile,
+  computeSummary,
+};
+
+if (require.main === module) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

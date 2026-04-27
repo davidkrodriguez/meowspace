@@ -2,14 +2,14 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { Pool } = require("pg");
 
-async function run() {
-  const databaseUrl = process.env.DATABASE_URL;
+async function runWithDeps(deps) {
+  const databaseUrl = deps.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required");
   }
 
-  const migrationsDir = path.resolve(process.cwd(), "db", "migrations");
-  const files = (await fs.readdir(migrationsDir))
+  const migrationsDir = deps.path.resolve(deps.cwd(), "db", "migrations");
+  const files = (await deps.fs.readdir(migrationsDir))
     .filter((file) => file.endsWith(".sql"))
     .sort();
 
@@ -18,15 +18,15 @@ async function run() {
     return;
   }
 
-  const pool = new Pool({
+  const pool = new deps.Pool({
     connectionString: databaseUrl,
-    ssl: process.env.PGSSLMODE === "disable" ? false : undefined,
+    ssl: deps.env.PGSSLMODE === "disable" ? false : undefined,
   });
 
   try {
     for (const file of files) {
-      const fullPath = path.join(migrationsDir, file);
-      const sql = await fs.readFile(fullPath, "utf8");
+      const fullPath = deps.path.join(migrationsDir, file);
+      const sql = await deps.fs.readFile(fullPath, "utf8");
       if (!sql.trim()) {
         continue;
       }
@@ -38,7 +38,21 @@ async function run() {
   }
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+async function run() {
+  return runWithDeps({
+    fs,
+    path,
+    Pool,
+    env: process.env,
+    cwd: process.cwd,
+  });
+}
+
+module.exports = { run, runWithDeps };
+
+if (require.main === module) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
