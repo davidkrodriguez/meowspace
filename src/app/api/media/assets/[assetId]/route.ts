@@ -5,6 +5,7 @@ import {
   getStoredAsset,
   storeUploadedAsset,
 } from "@/media-assets";
+import { errorResponse, getRequestId } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function PUT(
   request: Request,
   { params }: { params: { assetId: string } },
 ) {
+  const requestId = getRequestId(request);
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token") ?? "";
@@ -24,43 +26,57 @@ export async function PUT(
       bytes,
       contentType,
     });
-    return new Response(null, { status: 204 });
+    return new Response(null, {
+      status: 204,
+      headers: { "x-request-id": requestId },
+    });
   } catch (error) {
     if (error instanceof ValidationError) {
-      return Response.json(
-        { error: { code: "VALIDATION_ERROR", message: error.message } },
-        { status: 400 },
-      );
+      return errorResponse({
+        code: "VALIDATION_ERROR",
+        message: error.message,
+        status: 400,
+        requestId,
+      });
     }
     if (error instanceof UploadAuthError) {
-      return Response.json(
-        { error: { code: "UNAUTHORIZED_UPLOAD", message: error.message } },
-        { status: 403 },
-      );
+      return errorResponse({
+        code: "UNAUTHORIZED_UPLOAD",
+        message: error.message,
+        status: 403,
+        requestId,
+      });
     }
     if (error instanceof NotFoundError) {
-      return Response.json(
-        { error: { code: "NOT_FOUND", message: error.message } },
-        { status: 404 },
-      );
+      return errorResponse({
+        code: "NOT_FOUND",
+        message: error.message,
+        status: 404,
+        requestId,
+      });
     }
-    return Response.json(
-      { error: { code: "INTERNAL_ERROR", message: "Unexpected error" } },
-      { status: 500 },
-    );
+    return errorResponse({
+      code: "INTERNAL_ERROR",
+      message: "Unexpected error",
+      status: 500,
+      requestId,
+    });
   }
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { assetId: string } },
 ) {
+  const requestId = getRequestId(request);
   const asset = getStoredAsset(params.assetId);
   if (!asset) {
-    return Response.json(
-      { error: { code: "NOT_FOUND", message: "Asset not found" } },
-      { status: 404 },
-    );
+    return errorResponse({
+      code: "NOT_FOUND",
+      message: "Asset not found",
+      status: 404,
+      requestId,
+    });
   }
   const bodyBytes = Uint8Array.from(asset.bytes);
   return new Response(bodyBytes, {
@@ -68,6 +84,7 @@ export async function GET(
     headers: {
       "content-type": asset.contentType,
       "cache-control": "public, max-age=31536000, immutable",
+      "x-request-id": requestId,
     },
   });
 }

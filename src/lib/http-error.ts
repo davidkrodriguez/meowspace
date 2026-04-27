@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { AuthError } from "../auth";
+import { errorResponse } from "./api-response";
 import {
   AuthorizationError as PetsAuthorizationError,
   NotFoundError as PetNotFoundError,
@@ -14,38 +14,48 @@ import {
   ValidationError as FollowsValidationError,
 } from "../api/follows";
 
-export function domainErrorResponse(error: unknown): NextResponse {
+export function domainErrorResponse(error: unknown, requestId: string) {
   if (error instanceof AuthError) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: error.message } },
-      { status: 401 },
-    );
+    return errorResponse({
+      code: "UNAUTHORIZED",
+      message: error.message,
+      status: 401,
+      requestId,
+    });
   }
   if (error instanceof AuthorizationError || error instanceof PetsAuthorizationError) {
-    return NextResponse.json(
-      { error: { code: error.message, message: "Forbidden" } },
-      { status: 403 },
-    );
+    return errorResponse({
+      code: error.message,
+      message: "Forbidden",
+      status: 403,
+      requestId,
+    });
   }
   if (
     error instanceof PetsValidationError ||
     error instanceof PostsValidationError ||
     error instanceof FollowsValidationError
   ) {
-    return NextResponse.json(
-      { error: { code: "VALIDATION_ERROR", message: error.message } },
-      { status: 400 },
-    );
+    return errorResponse({
+      code: "VALIDATION_ERROR",
+      message: error.message,
+      status: 400,
+      requestId,
+    });
   }
   if (error instanceof PetNotFoundError || error instanceof FollowNotFoundError) {
-    return NextResponse.json(
-      { error: { code: "NOT_FOUND", message: error.message } },
-      { status: 404 },
-    );
+    return errorResponse({
+      code: "NOT_FOUND",
+      message: error.message,
+      status: 404,
+      requestId,
+    });
   }
   console.error(error);
-  return NextResponse.json(
-    { error: { code: "INTERNAL_ERROR", message: "Unexpected error" } },
-    { status: 500 },
-  );
+  return errorResponse({
+    code: "INTERNAL_ERROR",
+    message: "Unexpected error",
+    status: 500,
+    requestId,
+  });
 }

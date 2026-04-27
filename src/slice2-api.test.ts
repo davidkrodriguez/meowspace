@@ -98,10 +98,18 @@ describe("slice 2 HTTP API", () => {
     const res = await getFeed(
       new Request(
         "http://localhost/api/feed?cursor=not-json",
-        { headers: auth("u1") },
+        { headers: { ...auth("u1"), "x-request-id": "req_bad_cursor" } },
       ),
     );
     expect(res.status).toBe(400);
+    expect(res.headers.get("x-request-id")).toBe("req_bad_cursor");
+    await expect(res.json()).resolves.toEqual({
+      error: {
+        code: "INVALID_CURSOR",
+        message: "cursor must be JSON with createdAt and id",
+      },
+      requestId: "req_bad_cursor",
+    });
   });
 
   it("GET /api/pets/:id returns pet and 404 for missing pet", async () => {
@@ -256,10 +264,36 @@ describe("slice 2 HTTP API", () => {
     const res = await postUploadUrl(
       new Request("http://localhost/api/media/upload-url", {
         method: "POST",
-        headers: { "content-type": "application/json", ...auth("owner_upload") },
+        headers: {
+          "content-type": "application/json",
+          ...auth("owner_upload"),
+          "x-request-id": "req_upload_bad_type",
+        },
         body: JSON.stringify({ filename: "bad.pdf", contentType: "application/pdf" }),
       }),
     );
     expect(res.status).toBe(400);
+    expect(res.headers.get("x-request-id")).toBe("req_upload_bad_type");
+    const body = (await res.json()) as {
+      error: { code: string; message: string };
+      requestId: string;
+    };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.requestId).toBe("req_upload_bad_type");
+  });
+
+  it("adds generated request id to successful responses", async () => {
+    const res = await getHydration(
+      new Request("http://localhost/api/onboarding/hydration"),
+    );
+    expect(res.status).toBe(200);
+    const requestIdHeader = res.headers.get("x-request-id");
+    expect(requestIdHeader).toBeTruthy();
+    const body = (await res.json()) as {
+      requestId: string;
+      requiredFollowCount: number;
+    };
+    expect(body.requestId).toBe(requestIdHeader);
+    expect(body.requiredFollowCount).toBe(3);
   });
 });
