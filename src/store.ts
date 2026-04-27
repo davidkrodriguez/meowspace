@@ -7,6 +7,11 @@ export interface PersistenceAdapter {
   listPetsByOwner(ownerUserId: string): Promise<Pet[]>;
   findPetById(petId: string): Promise<Pet | undefined>;
   insertPet(pet: Pet): Promise<void>;
+  updatePetById(
+    petId: string,
+    updates: Partial<Pick<Pet, "name" | "species" | "avatarUrl" | "bio">>,
+  ): Promise<Pet | undefined>;
+  deletePetById(petId: string): Promise<boolean>;
   listPosts(): Promise<Post[]>;
   insertPost(post: Post): Promise<void>;
   listFollowsByFollower(followerUserId: string): Promise<Follow[]>;
@@ -68,6 +73,36 @@ class InMemoryAdapter implements PersistenceAdapter {
 
   async insertPet(pet: Pet): Promise<void> {
     getInMemoryStore().pets.push(pet);
+  }
+
+  async updatePetById(
+    petId: string,
+    updates: Partial<Pick<Pet, "name" | "species" | "avatarUrl" | "bio">>,
+  ): Promise<Pet | undefined> {
+    const inMemoryStore = getInMemoryStore();
+    const pet = inMemoryStore.pets.find((current) => current.id === petId);
+    if (!pet) {
+      return undefined;
+    }
+    if (updates.name !== undefined) pet.name = updates.name;
+    if (updates.species !== undefined) pet.species = updates.species;
+    if (updates.avatarUrl !== undefined) pet.avatarUrl = updates.avatarUrl;
+    if (updates.bio !== undefined) pet.bio = updates.bio;
+    return pet;
+  }
+
+  async deletePetById(petId: string): Promise<boolean> {
+    const inMemoryStore = getInMemoryStore();
+    const index = inMemoryStore.pets.findIndex((pet) => pet.id === petId);
+    if (index === -1) {
+      return false;
+    }
+    inMemoryStore.pets.splice(index, 1);
+    inMemoryStore.posts = inMemoryStore.posts.filter((post) => post.petId !== petId);
+    inMemoryStore.follows = inMemoryStore.follows.filter(
+      (follow) => follow.targetPetId !== petId,
+    );
+    return true;
   }
 
   async listPosts(): Promise<Post[]> {

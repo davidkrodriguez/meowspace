@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "../auth";
 import {
+  AuthorizationError as PetsAuthorizationError,
   NotFoundError as PetNotFoundError,
   ValidationError as PetsValidationError,
 } from "../api/pets";
@@ -20,7 +21,7 @@ export function domainErrorResponse(error: unknown): NextResponse {
       { status: 401 },
     );
   }
-  if (error instanceof AuthorizationError) {
+  if (error instanceof AuthorizationError || error instanceof PetsAuthorizationError) {
     return NextResponse.json(
       { error: { code: error.message, message: "Forbidden" } },
       { status: 403 },

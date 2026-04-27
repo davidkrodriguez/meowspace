@@ -4,7 +4,11 @@ import { GET as getFeed } from "./app/api/feed/route";
 import { POST as postFollows } from "./app/api/follows/route";
 import { DELETE as deleteFollowByPetId } from "./app/api/follows/[petId]/route";
 import { GET as getPets, POST as postPets } from "./app/api/pets/route";
-import { GET as getPetById } from "./app/api/pets/[petId]/route";
+import {
+  DELETE as deletePetById,
+  GET as getPetById,
+  PATCH as patchPetById,
+} from "./app/api/pets/[petId]/route";
 import { POST as postPosts } from "./app/api/posts/route";
 import { GET as getHydration } from "./app/api/onboarding/hydration/route";
 
@@ -157,5 +161,53 @@ describe("slice 2 HTTP API", () => {
       { params: { petId: pet.id } },
     );
     expect(deletedAgain.status).toBe(404);
+  });
+
+  it("PATCH and DELETE /api/pets/:petId enforce ownership", async () => {
+    const petRes = await postPets(
+      new Request("http://localhost/api/pets", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_4") },
+        body: JSON.stringify({ name: "Maple", species: "cat" }),
+      }),
+    );
+    const { pet } = (await petRes.json()) as { pet: { id: string } };
+
+    const forbiddenPatch = await patchPetById(
+      new Request(`http://localhost/api/pets/${pet.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", ...auth("viewer_4") },
+        body: JSON.stringify({ name: "Nope" }),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(forbiddenPatch.status).toBe(403);
+
+    const patched = await patchPetById(
+      new Request(`http://localhost/api/pets/${pet.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", ...auth("owner_4") },
+        body: JSON.stringify({ name: "Maple Prime" }),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(patched.status).toBe(200);
+
+    const deleted = await deletePetById(
+      new Request(`http://localhost/api/pets/${pet.id}`, {
+        method: "DELETE",
+        headers: auth("owner_4"),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(deleted.status).toBe(200);
+
+    const missing = await getPetById(
+      new Request(`http://localhost/api/pets/${pet.id}`, {
+        headers: auth("owner_4"),
+      }),
+      { params: { petId: pet.id } },
+    );
+    expect(missing.status).toBe(404);
   });
 });

@@ -96,6 +96,47 @@ class PostgresAdapter implements PersistenceAdapter {
     );
   }
 
+  async updatePetById(
+    petId: string,
+    updates: Partial<Pick<Pet, "name" | "species" | "avatarUrl" | "bio">>,
+  ): Promise<Pet | undefined> {
+    const fields: string[] = [];
+    const values: Array<string | null> = [];
+    let index = 1;
+
+    if (updates.name !== undefined) {
+      fields.push(`name = $${index++}`);
+      values.push(updates.name);
+    }
+    if (updates.species !== undefined) {
+      fields.push(`species = $${index++}`);
+      values.push(updates.species);
+    }
+    if (updates.avatarUrl !== undefined) {
+      fields.push(`avatar_url = $${index++}`);
+      values.push(updates.avatarUrl ?? null);
+    }
+    if (updates.bio !== undefined) {
+      fields.push(`bio = $${index++}`);
+      values.push(updates.bio ?? null);
+    }
+    if (!fields.length) {
+      return this.findPetById(petId);
+    }
+
+    values.push(petId);
+    const result = await this.pool.query(
+      `UPDATE pets SET ${fields.join(", ")} WHERE id = $${index} RETURNING *`,
+      values,
+    );
+    return result.rows[0] ? rowToPet(result.rows[0]) : undefined;
+  }
+
+  async deletePetById(petId: string): Promise<boolean> {
+    const result = await this.pool.query("DELETE FROM pets WHERE id = $1", [petId]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async listPosts(): Promise<Post[]> {
     const result = await this.pool.query("SELECT * FROM posts");
     return result.rows.map((row) => rowToPost(row));

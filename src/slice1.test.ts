@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createPet,
+  deleteMyPet,
+  getPetById,
   listMyPets,
+  updateMyPet,
   ValidationError as PetValidationError,
 } from "./api/pets";
 import {
@@ -169,5 +172,29 @@ describe("slice 1 core loop", () => {
     const store = await getStore();
     const existing = await store.findFollowByPair(first.followerUserId, pet.id);
     expect(existing?.id).toBe(first.id);
+  });
+
+  it("updates and deletes pet with ownership checks", async () => {
+    resetStore();
+    const pet = await createPet(
+      { clerkUserId: "owner_9" },
+      { name: "Poppy", species: "cat", bio: "sleepy" },
+    );
+
+    const updated = await updateMyPet({ clerkUserId: "owner_9" }, pet.id, {
+      name: "Poppy Prime",
+      bio: "playful",
+    });
+    expect(updated.name).toBe("Poppy Prime");
+    expect(updated.bio).toBe("playful");
+
+    await expect(
+      updateMyPet({ clerkUserId: "intruder_9" }, pet.id, { name: "Hack" }),
+    ).rejects.toThrow("PET_NOT_OWNED");
+
+    await deleteMyPet({ clerkUserId: "owner_9" }, pet.id);
+    await expect(
+      getPetById({ clerkUserId: "owner_9" }, pet.id),
+    ).rejects.toThrow("Pet not found");
   });
 });
