@@ -10,6 +10,12 @@ This document defines the shared HTTP contract for all `/api/*` endpoints.
 
 Use this ID to correlate client errors with server logs.
 
+## Auth header safety
+
+- Current MVP uses `x-clerk-user-id` as auth context.
+- In `production`, requests are only trusted when `x-internal-auth-secret` matches `INTERNAL_AUTH_SECRET`.
+- If the trusted secret is missing or invalid in production, endpoints treat the request as unauthenticated.
+
 ## Response Shapes
 
 ### Success envelope
@@ -61,6 +67,7 @@ Common codes:
 
 - `/api/media/assets/:assetId`:
   - `PUT` success is `204 No Content` and still includes `x-request-id` header.
+  - Upload payload limit is `5 MiB` (`5242880` bytes). Larger uploads return `VALIDATION_ERROR` (`400`).
   - `GET` serves binary bytes and includes `x-request-id` header.
 - `/api/onboarding/hydration`:
   - Returns suggestions with top-level `requestId`.

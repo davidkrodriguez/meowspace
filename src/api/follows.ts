@@ -3,11 +3,20 @@ import { getStore, nowIso } from "../store";
 import type { Follow } from "../types";
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
 }
 
 export class ValidationError extends Error {}
 export class NotFoundError extends Error {}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
 
 export async function followPet(
   context: AuthContext,
@@ -32,8 +41,18 @@ export async function followPet(
     targetPetId,
     createdAt: nowIso(),
   };
-  await store.insertFollow(created);
-  return created;
+  try {
+    await store.insertFollow(created);
+    return created;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const raced = await store.findFollowByPair(user.id, targetPetId);
+      if (raced) {
+        return raced;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function unfollowPet(

@@ -8,7 +8,16 @@ export interface AuthContext {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
 }
 
 export async function resolveAuthenticatedUser(
@@ -30,6 +39,16 @@ export async function resolveAuthenticatedUser(
     clerkId: clerkUserId,
     createdAt: nowIso(),
   };
-  await store.insertUser(created);
-  return created;
+  try {
+    await store.insertUser(created);
+    return created;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const raced = await store.findUserByClerkId(clerkUserId);
+      if (raced) {
+        return raced;
+      }
+    }
+    throw error;
+  }
 }

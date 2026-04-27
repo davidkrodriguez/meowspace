@@ -1,4 +1,5 @@
 import {
+  MAX_UPLOAD_BYTES,
   NotFoundError,
   UploadAuthError,
   ValidationError,
@@ -17,9 +18,40 @@ export async function PUT(
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token") ?? "";
+    const contentLengthRaw = request.headers.get("content-length");
+    const contentLength =
+      contentLengthRaw !== null ? Number.parseInt(contentLengthRaw, 10) : NaN;
+    if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_BYTES) {
+      throw new ValidationError(
+        `Upload payload exceeds ${MAX_UPLOAD_BYTES} byte limit`,
+      );
+    }
     const contentType =
       request.headers.get("content-type")?.trim() || "application/octet-stream";
-    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!request.body) {
+      throw new ValidationError("Upload payload cannot be empty");
+    }
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || !value.length) continue;
+      totalBytes += value.length;
+      if (totalBytes > MAX_UPLOAD_BYTES) {
+        throw new ValidationError(
+          `Upload payload exceeds ${MAX_UPLOAD_BYTES} byte limit`,
+        );
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
     storeUploadedAsset({
       assetId: params.assetId,
       token,

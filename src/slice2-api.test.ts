@@ -282,6 +282,38 @@ describe("slice 2 HTTP API", () => {
     expect(body.requestId).toBe("req_upload_bad_type");
   });
 
+  it("rejects oversized media asset uploads", async () => {
+    const ticketRes = await postUploadUrl(
+      new Request("http://localhost/api/media/upload-url", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...auth("owner_upload_big") },
+        body: JSON.stringify({ filename: "cat.jpg", contentType: "image/jpeg" }),
+      }),
+    );
+    const ticketBody = (await ticketRes.json()) as {
+      ticket: { assetId: string; uploadUrl: string };
+    };
+    const { assetId, uploadUrl } = ticketBody.ticket;
+    const token = new URL(`http://localhost${uploadUrl}`).searchParams.get("token");
+    expect(token).toBeTruthy();
+
+    const oversized = new Uint8Array(5 * 1024 * 1024 + 1);
+    const upload = await putMediaAsset(
+      new Request(`http://localhost/api/media/assets/${assetId}?token=${token}`, {
+        method: "PUT",
+        headers: { "content-type": "image/jpeg" },
+        body: oversized,
+      }),
+      { params: { assetId } },
+    );
+    expect(upload.status).toBe(400);
+    const body = (await upload.json()) as {
+      error: { code: string; message: string };
+    };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.message).toContain("byte limit");
+  });
+
   it("adds generated request id to successful responses", async () => {
     const res = await getHydration(
       new Request("http://localhost/api/onboarding/hydration"),

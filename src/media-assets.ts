@@ -24,8 +24,10 @@ declare global {
 }
 
 function randomId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
+
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 function getPendingUploads(): Map<string, PendingUpload> {
   if (!globalThis.__MEOWSPACE_PENDING_UPLOADS__) {
@@ -105,6 +107,11 @@ export function storeUploadedAsset(input: {
   }
   if (!input.bytes.length) {
     throw new ValidationError("Upload payload cannot be empty");
+  }
+  if (input.bytes.length > MAX_UPLOAD_BYTES) {
+    throw new ValidationError(
+      `Upload payload exceeds ${MAX_UPLOAD_BYTES} byte limit`,
+    );
   }
 
   getStoredAssets().set(input.assetId, {
